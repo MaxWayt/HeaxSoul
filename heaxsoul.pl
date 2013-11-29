@@ -83,26 +83,55 @@ sub WaitAnswer {
     my $sock = $_[0];
 
     my $data = <$sock>;
+    if (!defined $data) {
+        print "Remote host closed connection\n";
+        return false;
+    }
     my @params = &GetInputArray($data);
     return &HandleRep($sock, @params);
+}
+
+sub OpenSockConnection {
+    return new IO::Socket::INET(PeerAddr => $config{server},
+                                    PeerPort => $config{port},
+                                    Proto => 'tcp')
+                                    or die "Fail to create socket: $!\n";
 }
 
 sub main {
     print "Connecting to $config{server}:$config{port} with user $config{user}\n";
 
-    my $sock = new IO::Socket::INET(PeerAddr => $config{server},
-                                    PeerPort => $config{port},
-                                    Proto => 'tcp')
-                                    or die "Fail to create socket: $!\n";
+    my $sock = undef;
+    my $conn_count = 1;
 
-    while (my $data = <$sock>) {
-        my @params = &GetInputArray($data);
-
-        if (exists $handlers{$params[0]}) {
-            $handlers{$params[0]}->($sock, @params) if exists $handlers{$params[0]};
-        } else {
-            print "Receiv unknow message: $params[0]\n";
+    while (defined "The world is cool"){
+        while (!defined $sock) {
+            print "Try to connect to remote server (Attempt $conn_count)\n";
+            $sock = &OpenSockConnection();
+            if (!defined $sock) {
+                ++$conn_count;
+                sleep(2);
+            }
         }
+
+        $conn_count = 1;
+        print "Connection open !\n";
+
+        while (my $data = <$sock>) {
+            if (!defined $data) {
+                print "Remote host close socket, try to re-login\n";
+                $sock = &OpenSockConnection();
+                continue;
+            }
+            my @params = &GetInputArray($data);
+
+            if (exists $handlers{$params[0]}) {
+                $handlers{$params[0]}->($sock, @params) if exists $handlers{$params[0]};
+            } else {
+                print "Receiv unknow message: $params[0]\n";
+            }
+        }
+        $sock = undef;
     }
     print "Closing HeaxSoul, Bye\n";
 }
