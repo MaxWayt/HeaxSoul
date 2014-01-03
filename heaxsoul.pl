@@ -121,14 +121,14 @@ sub main {
             if (!defined $data) {
                 print "Remote host close socket, try to re-login\n";
                 $sock = &OpenSockConnection();
-                continue;
-            }
-            my @params = &GetInputArray($data);
-
-            if (exists $handlers{$params[0]}) {
-                $handlers{$params[0]}->($sock, @params) if exists $handlers{$params[0]};
             } else {
-                print "Receiv unknow message: $params[0]\n";
+                my @params = &GetInputArray($data);
+
+                if (exists $handlers{$params[0]}) {
+                    $handlers{$params[0]}->($sock, @params) if exists $handlers{$params[0]};
+                } else {
+                    print "Receiv unknow message: $params[0]\n";
+                }
             }
         }
         $sock = undef;
